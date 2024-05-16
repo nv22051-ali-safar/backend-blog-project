@@ -1,7 +1,7 @@
 import { uploadPicture } from "../middleware/uploadPictureMiddleware";
 import Post from "../models/Post";
 import Comment from "../models/Comment";
-import { fileRemover } from "../utilis/fileRemover";
+import { fileRemover } from "../utils/fileRemover";
 import { v4 as uuidv4 } from "uuid";
 
 const createPost = async (req, res, next) => {
@@ -98,4 +98,43 @@ const deletePost = async (req, res, next) => {
   }
 };
 
-export { createPost, updatePost, deletePost };
+const getPost = async (req, res, next) => {
+  try {
+    const post = await Post.findOne({ slug: req.params.slug }).populate([
+      {
+        path: "user",
+        select: ["avatar", "name"],
+      },
+      {
+        path: "comments",
+        match: {
+          check: true,
+          parent: null,
+        },
+        populate: [
+          {
+            path: "user",
+            select: ["avatar", "name"],
+          },
+          {
+            path: "replies",
+            match: {
+              check: true,
+            },
+          },
+        ],
+      },
+    ]);
+
+    if (!post) {
+      const error = new Error("Post was not found");
+      return next(error);
+    }
+
+    return res.json(post);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export { createPost, updatePost, deletePost, getPost };
